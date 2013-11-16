@@ -20,7 +20,7 @@ var rect; //Background rectangle
 var board, homes;
 var group = new Kinetic.Group();
 //var groupPlayerTiles = new Kinetic.Group();
-var selectedNode, targetNode;
+var selectedNode, targetNode; //Used to pass tiles between layers
 var gameState = new GameState(4);
 var boardCount = 0;
 var strategyCardButton = new GameButton('Show Strategy Cards', 8, 760, 30);
@@ -28,7 +28,6 @@ var showBoardButton = new GameButton('Show Game Board', 8, 760, 30);
 var testButtonDraw = new GameButton('Test Draw', 600, 760, 30);
 var testButtonHide = new GameButton('Test Hide', 750, 760, 30);
 var selectSC = new GameButton('Select Card', 300, 760, 30);
-
 
 
 function init() {
@@ -44,8 +43,6 @@ function init() {
 	hexHeight = hexWidth*images.blank.height/images.blank.width;
 	bOff = stage.attrs.height/2-10;
 
-
-
 	//Setup game
  	drawBackground();
  	createBoard();
@@ -56,17 +53,15 @@ function init() {
  	phase('Board Setup');
  	hideStrategyCards();
 
- 	console.log(stratCards);
-
+ 	//Extra buttons to facilitate testing
  	drawButton(testButtonDraw, testFunctionDraw);
  	drawButton(testButtonHide, testFunctionHide);
-
 
  	//Click events
 	topLayer.on('click', resetExpand);
 	layer.on('click', expandTile);
 
-	// Draw the screen
+	//Add all of the layers to the stage
 	stage.add(backgroundLayer);
 	stage.add(layer);
 	stage.add(layerStatus);
@@ -90,24 +85,25 @@ function gameControl() {
 	//updateStatus('Board is complete!', true);
 }
 
-function GameState(nP) {
+function GameState(numPlayers) {
 	this.playerTurn = 1;
-	this.numPlayers = nP;
+	this.numPlayers = numPlayers;
 	this.currentPlayer;
 	this.direction = true; //Used for turn order while building board
 	this.phase;
 	this.board;
 
+	//Special NextTurn function for building the game board
 	this.createBoardNextTurn = function() {
 		if(this.direction){
 			this.playerTurn += 1;
-			if(this.playerTurn>this.numPlayers){
+			if(this.playerTurn>this.numPlayers){ //Switch direction once the last player goes
 				this.direction = false;
 				this.playerTurn = this.numPlayers;
 			}
 		} else{
 			this.playerTurn -=1;
-			if(this.playerTurn<1){
+			if(this.playerTurn<1){ //Switch direction
 				this.direction = true;
 				this.playerTurn = 1;
 			}
@@ -122,6 +118,7 @@ function GameState(nP) {
 		turn('Player '+this.currentPlayer.num);
 	}
 
+	//Standard nextTurn function
 	this.nextTurn = function() {
 		if(this.playerTurn < this.numPlayers) {
 			this.playerTurn += 1;
@@ -149,7 +146,7 @@ function strategyPhase() {
 Click Events
 *******************/
 
-//Click event for board layer
+//Click event for board layer (Show enlarged tiles)
 function expandTile(evt) {
 	var node = evt.targetNode.clone({
 		width: hexWidth*3,
@@ -243,6 +240,7 @@ function assignTile(evt) {
 	}	
 }
 
+//Button function to hide the board and show Strategy cards
 function showStrategyCardsButton() {
 	hideButton(strategyCardButton);
 	hideBoard();
@@ -254,6 +252,7 @@ function showStrategyCardsButton() {
 
 }
 
+//Button function to hide Strategy cards and show the board
 function showBoard() {
 	hideButton(showBoardButton);
 	drawBoard();
@@ -264,6 +263,7 @@ function showBoard() {
 	layerPlayerTiles.show();
 }
 
+//Function for testing purposes -- attempting to save game state atm
 function testFunctionDraw() {
 	console.log(gameState);
 	var cache = [];
@@ -280,6 +280,7 @@ function testFunctionDraw() {
 	console.log('test');
 }
 
+//Function for testing purposes
 function testFunctionHide() {
 	//showBoard();
 	//hideStrategyCards();
@@ -541,13 +542,16 @@ function hideBoard() {
 	layer.draw();
 }
 
+//Displays the strategy cards
 function showStrategyCards() {
+	//Are we still in the Strategy Phase? 
+	//***** Need to fix this -- not sure how yet
 	if(!gameState.currentPlayer.sc1 && !gameState.currentPlayer.sc2){
 		console.log('Not done with Strategy');
 	} else {
 		console.log('Done with Strategy');
 	}
-
+	//Loop to display the individual cards *** Need to use this strategy for other parts of code!
 	for(i=0; i<stratCards.length; i++) {
 		if(stratCards[i].active) {
 			stratCards[i].image.show();
@@ -558,6 +562,7 @@ function showStrategyCards() {
 
 }
 
+//Hides strategy card images
 function hideStrategyCards() {
 	for(i=0; i<stratCards.length; i++) {
 		stratCards[i].image.hide();
@@ -566,6 +571,7 @@ function hideStrategyCards() {
 	layer.draw();
 }
 
+//Enlarge strategy card for easier viewing/reading
 function enlargeSC(evt) {
 	var node = evt.targetNode;
 
@@ -575,6 +581,7 @@ function enlargeSC(evt) {
 		stratCards[i].image.hide();
 		stratCards[i].image.off('click');
 	}
+	//Creates a new variable to store the card rather than altering the original
 	var tempCard = new Kinetic.Image({
 		image: stratCards[node.index-1].image.attrs.image,
 		x: 250,
@@ -584,6 +591,8 @@ function enlargeSC(evt) {
 	});
 	layer.add(tempCard);
 	tempCard.on('click', shrinkSC);
+
+	//Delete the temp card
 	function shrinkSC() {
 		tempCard.remove();
 		layer.draw();
@@ -593,6 +602,7 @@ function enlargeSC(evt) {
 	layer.draw();
 	drawButton(selectSC, assignSC);
 
+	//Assigns the selected Strategy Card to the player
 	function assignSC() {
 		if(!gameState.currentPlayer.sc1){
 			gameState.currentPlayer.sc1 = stratCards[node.index-1];
@@ -605,7 +615,7 @@ function enlargeSC(evt) {
 		console.log(gameState.currentPlayer);
 		console.log(gameState.currentPlayer.sc1);
 		console.log(gameState.currentPlayer.sc2);
-
+		//Advance the turn once a card is selected
 		gameState.nextTurn();
 	}
 }
@@ -645,7 +655,7 @@ function assignTiles() {
 			allTiles.push(images[possibleTiles[i]]);
 		}
 	}
-	/**
+	/** *****Will use this again once real tiles are implemented ******
 	//Assign random tiles to each player
 	for(i=0; i<numPlayers; i++){
 		for(t=0; t<tilesPerPlayer; t++) {
@@ -665,6 +675,7 @@ function assignTiles() {
 	**/
 
 	//Assign single color tiles to each player
+	//***Only use until real tiles are implemented***
 	for(i=0; i<numPlayers; i++){
 		for(t=0; t<tilesPerPlayer; t++) {
 			players[i].tiles.push(images[possibleTiles[i]]);
@@ -730,7 +741,6 @@ var playerText = new Kinetic.Text({
 	fontFamily: 'Calibri',
 	fill: 'black',
 });
-
 function turn(txt){
 	playerText.remove();
 	playerText.textArr[0].text = txt;
@@ -746,7 +756,6 @@ var phaseText = new Kinetic.Text({
 	fontFamily: 'Calibri',
 	fill: 'black',
 });
-
 function phase(txt) {
 	phaseText.remove();
 	phaseText.textArr[0].text = txt;
@@ -754,6 +763,7 @@ function phase(txt) {
 	layerStatus.draw();
 }
 
+//Makes a button for use in the game
 function GameButton(txt, xPos, yPos, size) {
 	this.bText = new Kinetic.Text({
 		x: xPos,
@@ -763,7 +773,7 @@ function GameButton(txt, xPos, yPos, size) {
 		fontFamily: 'Calibri',
 		fill: 'black',
 	})
-
+	//Adds a rectangle behind the text
 	this.bkg = new Kinetic.Rect({
 		cornerRadius: 5,
 		x: this.bText.getX()-5,
