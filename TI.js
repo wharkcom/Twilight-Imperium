@@ -178,8 +178,6 @@ function resetExpand(evt) {
 
 	//Redraw board
 	layer.draw();
-
-	//console.log('toplayer click');
 }
 
 //Select a player tile to place on the board
